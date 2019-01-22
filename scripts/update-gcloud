@@ -1,0 +1,17 @@
+#!/bin/bash
+
+function update-gcloud () {
+
+  GCLOUD_INSTALLED=$( which gcloud || true )
+  if [ -z "$GCLOUD_INSTALLED" ]; then
+    echo "  Critical Error: gcloud is not installed, see requirements, exiting"
+    exit 1
+  fi
+
+  echo 'Now checking that the latest version of gcloud is installed and that all modules are up to date'
+  yes Y | gcloud components update
+
+
+  echo 'shows avaiable kubernetes versions'
+  gcloud container get-server-config --project="$PROJECT_NAME" --zone="$GCP_ZONE"
+}

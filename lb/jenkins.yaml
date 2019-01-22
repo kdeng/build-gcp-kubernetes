@@ -1,0 +1,19 @@
+# [START jenkins_service_ui]
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: jenkins-lb
+  namespace: build
+  labels:
+    app: jenkins-ui-lb
+spec:
+  type: LoadBalancer
+  selector:
+    app: master
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+      name: ui
+# [END jenkins_service_ui]

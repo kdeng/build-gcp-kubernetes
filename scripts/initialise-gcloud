@@ -1,0 +1,14 @@
+#!/bin/bash
+
+function initialise-gcloud () {
+
+  # simple, script will exit if command not found.
+  GCLOUD_INSTALLED=$( which gcloud || true )
+  if [ -z "$GCLOUD_INSTALLED" ]; then
+    echo "  Critical Error: gcloud is not installed, see requirements, exiting"
+    exit 1
+  fi
+
+  gcloud init
+
+}

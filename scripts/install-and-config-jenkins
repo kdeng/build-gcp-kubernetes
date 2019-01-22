@@ -1,0 +1,98 @@
+#!/bin/bash
+
+
+function install-and-config-jenkins () {
+
+  # Temp debugging
+  # set -x
+
+  echo 'Info: It takes about 5 minutes for Jenkins to start'
+
+  # This is Googles recommend approach
+
+  # Check if jenkins is already deployed
+  JENKINS_DEPLOYED_ALREADY=$( kubectl get deployment jenkins --namespace build | grep -c jenkins || true )
+  if [ "$JENKINS_DEPLOYED_ALREADY" -ge '1' ]; then
+    echo ''
+    echo 'Jenkins is already deployed so exiting. Showing:'
+    kubectl get deployment jenkins --namespace build
+    echo ''
+    kubectl describe deployment jenkins --namespace build
+    exit 0
+  fi
+
+  # Jenkins Setup and config
+  echo ''
+  echo '-----------------------------------'
+  echo "Deploying Jenkins onto k8s cluster"
+  echo '-----------------------------------'
+  echo ''
+
+  # check that the image does not exist first, else create it.
+  echo 'Checking for the jenkins-home-image'
+  JENKINS_IMAGE_EXISTS=$( gcloud compute images list --project="$PROJECT_NAME" --filter='name=jenkins-home-image' | grep -ci jenkins-home-image || true )
+  if [ "$JENKINS_IMAGE_EXISTS" == '1' ]; then
+    echo 'Jenkins-home-image image exists already, skipping, so using existing'
+    gcloud compute images list --project="$PROJECT_NAME" --filter='name=jenkins-home-image'
+    echo ''
+  else
+    # Create the image if it does not exist
+    echo 'Jenkins-home-image image does not existing so creating it, normally takes 30-40 seconds.'
+    time gcloud compute images create jenkins-home-image --project="$PROJECT_NAME" \
+      --source-uri https://storage.googleapis.com/solutions-public-assets/jenkins-cd/jenkins-home-v3.tar.gz \
+      --labels env=build,app=jenkins
+    gcloud compute images list --project="$PROJECT_NAME" --filter='name=jenkins-home-image'
+  fi
+
+  echo ''
+  echo 'Checking for the jenkins-home disk'
+  JENKINS_DISK_EXISTS=$( gcloud compute disks list --project="$PROJECT_NAME" --filter='name=jenkins-home' | grep -ci jenkins-home || true )
+  if [ "$JENKINS_DISK_EXISTS" == '1' ]; then
+    echo 'Jenkins-home disk exists already, skipping, so useing existing'
+    gcloud compute disks list --project="$PROJECT_NAME" --filter='name=jenkins-home'
+    echo ''
+  else
+    echo 'Jenkins-home disk (10GB) does not exist to creating it. Normally takes 1min'
+    time gcloud compute disks create jenkins-home --project="$PROJECT_NAME" \
+      --image jenkins-home-image \
+      --zone "$GCP_ZONE" \
+      --labels env=build,app=jenkins
+    gcloud compute disks list --project="$PROJECT_NAME"
+    echo ''
+  fi
+
+  # Jenkins password
+  #echo ''
+  #echo "Important: Jenkins password is $JENKINSPASSWORD"
+  #echo ''
+
+  cp -fv jenkins/options.template jenkins/options
+  sed -i.bak s#CHANGE_ME#$JENKINSPASSWORD# jenkins/options
+
+  # Kubectl commands
+
+  # Create secrets environment variables of deployment
+  kubectl create secret generic jenkins --from-file=jenkins/options --namespace build
+
+  # Deploy the deployment and service
+  kubectl apply -f jenkins/jenkins-deployment.yaml
+  kubectl apply -f jenkins/jenkins-service.yaml
+  kubectl get pods --namespace build
+  kubectl get svc --namespace build
+
+  echo ''
+  echo 'Describing Jenkins deployment'
+  JENKINS_POD_ID=$( kubectl get pods --namespace build | grep jenkins | awk '{print $1}' )
+
+  echo ''
+  echo '--------------------------------------------------------------------'
+  echo 'Jenkins deployment completed'
+  echo ''
+  echo 'Please wait a few minutes then.'
+  echo 'You will get an SSL warning  as the default jenkins certificate is self-signed.'
+  echo "Username: jenkins"
+  echo "Password: $JENKINSPASSWORD"
+  echo ''
+  echo '--------------------------------------------------------------------'
+
+}

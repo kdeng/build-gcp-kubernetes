@@ -1,0 +1,17 @@
+#!/bin/bash
+
+function check-cluster-health () {
+
+  #echo 'Master IP is:'
+  #gcloud container clusters list
+
+  MASTER_IP=$(gcloud container clusters list --project="$PROJECT_NAME" | grep "$K8S_CLUSTERNAME " | awk '{print $4}')
+  echo "Master IP is: $MASTER_IP"
+
+  gcloud container clusters get-credentials "$K8S_CLUSTERNAME" \
+    --project "$PROJECT_NAME" \
+    --zone "$GCP_ZONE"
+
+  kubectl cluster-info
+
+}

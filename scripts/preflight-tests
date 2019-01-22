@@ -1,0 +1,102 @@
+#!/bin/bash
+
+function preflight-tests () {
+
+  echo 'Starting pre-flight checks'
+
+  # Are all variables above Not null, else fail / exit
+  if [ -z "$PROJECT_NAME" ]; then
+    echo "  Critical Error: PROJECT_NAME variable is null/empty, exiting"
+    exit 1
+  fi
+
+  if [ -z "$K8S_CLUSTERNAME" ]; then
+    echo "  Critical Error: K8S_CLUSTERNAME variable is null/empty, exiting"
+    exit 1
+  fi
+
+  if [ -z "$K8S_NODE_COUNT" ]; then
+    echo "  Critical Error: K8S_NODE_COUNT variable is null/empty, exiting"
+    exit 1
+  fi
+  if [ -z "$GCP_ZONE" ]; then
+    echo "  Critical Error: GCP_ZONE variable is null/empty, exiting"
+    exit 1
+  fi
+
+  if [ -z "$MACHINE_SIZE" ]; then
+    echo "  Critical Error: MACHINE_SIZE variable is null/empty, exiting"
+    exit 1
+  fi
+
+  if [ -z "$MACHINE_ROOT_DISK_SIZE_GB" ]; then
+    echo "  Critical Error: MACHINE_ROOT_DISK_SIZE_GB variable is null/empty, exiting"
+    exit 1
+  fi
+
+  if [ -z "$JENKINSPASSWORD" ]; then
+    echo "  Critical Error: JENKINSPASSWORD variable is null/empty, exiting"
+    exit 1
+  fi
+
+  # Does the project exist and has a billing account assigned
+  # BILLING_ENABLED_STATE=$( gcloud alpha billing projects describe "$PROJECT_NAME" | grep -ic 'billingAccountName: billingAccounts/' )
+  # if [ "$BILLING_ENABLED_STATE" -eq '0' ]; then
+  #   echo "  Critical Error: A billing account it enabled/set on this project $PROJECT_NAME, exiting!"
+  #   exit 1
+  # fi
+
+  # Does the project have Container Engine Api enabled
+  # TODO: How to check this?
+
+  # Are the required tools installed?
+  #  - gcloud
+  GCLOUD_INSTALLED=$( which gcloud || true )
+  if [ -z "$GCLOUD_INSTALLED" ]; then
+    echo "  Critical Error: gcloud is not installed, see requirements, exiting"
+    exit 1
+  fi
+
+  #  - kubectl
+  KUBECTL_INSTALLED=$( which kubectl || true )
+  if [ -z "$KUBECTL_INSTALLED" ]; then
+    echo "  Critical Error: kubectl is not installed, see requirements, exiting"
+    exit 1
+  fi
+
+  #  - openssl
+  OPENSSL_INSTALLED=$( which kubectl || true )
+  if [ -z "$OPENSSL_INSTALLED" ]; then
+    echo "  Critical Error: OPENSSL is not installed, see requirements, exiting"
+    exit 1
+  fi
+
+  # Does the installed tools met the minimum version?
+  echo ''
+  echo '  Checking versions:'
+  OPENSSL_VERSION=$( openssl version | awk '{print $2}' )
+  echo "  Installed version of Openssl needs to be    >= 0.9.8,   found $OPENSSL_VERSION"
+
+  GCLOUD_VERSION=$( gcloud version | head -1 | awk '{print $4}' )
+  echo "  Installed version of Gcloud needs to be     >= 177.x.x, found $GCLOUD_VERSION"
+
+  KUBECTL_VERSION=$( kubectl version --client | grep GitVersion | cut -f5 -d':' | cut -f2 -d'"' | cut -f2 -d'v' )
+  echo "  Installed version of Kubectl needs to be    >= 1.7.x,   found $KUBECTL_VERSION"
+
+  echo ''
+  echo '  It is recommended that you always run the latest versions'
+
+  # Does the Machine_size exist?
+  # The cluster creation and GHE creation will fail if the instance is not correct, this should be enough, still its not fail fast methodology
+  echo ''
+  echo 'Possible machine types are:'
+  gcloud compute machine-types list --project="$PROJECT_NAME" --filter="zone:($GCP_ZONE)"
+  echo ''
+
+  # Now check that selected machine type is in the list
+  echo 'Selected machine-type for k8s cluster:'
+  gcloud compute machine-types list --project="$PROJECT_NAME" --filter="zone:($GCP_ZONE) AND name=$MACHINE_SIZE" | grep "$GCP_ZONE"
+
+  echo ''
+  echo 'All pre-flight checks has Passed.'
+}

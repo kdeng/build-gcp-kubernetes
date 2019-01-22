@@ -1,0 +1,6 @@
+.vscode/
+tmp/
+.project
+.DS_Store
+jenkins/options
+jenkins/options.bak

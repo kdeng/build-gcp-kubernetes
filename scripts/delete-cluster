@@ -1,0 +1,32 @@
+#!/bin/bash
+
+function delete-cluster () {
+
+  echo "Checking if the cluster $K8S_CLUSTERNAME exists in the first place"
+  echo ''
+  # This will return an non-zero exit code if the grep fails, we want this behavour. case sensitive matching
+  gcloud beta container --project "$PROJECT_NAME" clusters list --zone "$GCP_ZONE" | grep "$K8S_CLUSTERNAME"
+  echo ''
+
+  # This will ask the user to confirm before deletion
+  time gcloud beta container --project "$PROJECT_NAME" clusters delete "$K8S_CLUSTERNAME" --zone "$GCP_ZONE" --quiet
+
+  # Add while loop to advise when cluster has been fully deleted.
+  CLUSTER_EXISTS=''
+  CLUSTER_EXISTS=$( gcloud beta container --project "$PROJECT_NAME" clusters list --zone "$GCP_ZONE" | grep -c "$K8S_CLUSTERNAME" || true )
+
+  while [ "$CLUSTER_EXISTS" -eq '1' ]
+  do
+    CLUSTER_EXISTS=$( gcloud beta container --project "$PROJECT_NAME" clusters list  --zone "$GCP_ZONE" | grep -c "$K8S_CLUSTERNAME" || true )
+    echo 'Cluster is still being deleted'
+    sleep 30
+  done
+
+  gcloud beta container --project "$PROJECT_NAME" clusters list --zone "$GCP_ZONE" || true
+
+  echo 'Deleting all disks'
+  gcloud --project "$PROJECT_NAME" compute images delete jenkins-home-image --quiet || true
+  gcloud --project "$PROJECT_NAME" compute disks delete jenkins-home --zone "$GCP_ZONE" --quiet
+  gcloud --project "$PROJECT_NAME" compute disks delete nexus-home --zone "$GCP_ZONE" --quiet
+
+}

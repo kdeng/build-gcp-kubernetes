@@ -1,0 +1,74 @@
+#!/bin/bash
+
+function install-and-config-nexus () {
+
+  # Temp debugging
+  # set -x
+
+  echo 'Info: It takes about 5 minutes for Nexus to start'
+
+  # This is Googles recommend approach
+
+  # Check if nexus is already deployed
+  NEXUS_DEPLOYED_ALREADY=$( kubectl get deployment nexus --namespace build | grep -c nexus || true )
+  if [ "$NEXUS_DEPLOYED_ALREADY" -ge '1' ]; then
+    echo ''
+    echo 'Nexus is already deployed so exiting. Showing:'
+    kubectl get deployment nexus --namespace build
+    echo ''
+    kubectl describe deployment nexus --namespace build
+    exit 0
+  fi
+
+  # Nexus Setup and config
+  echo ''
+  echo '-----------------------------------'
+  echo "Deploying Nexus onto k8s cluster"
+  echo '-----------------------------------'
+  echo ''
+
+  echo ''
+  echo 'Checking for the nexus-home disk'
+  NEXUS_DISK_EXISTS=$( gcloud compute disks list --project="$PROJECT_NAME" --filter='name=nexus-home' | grep -ci nexus-home || true )
+  if [ "$NEXUS_DISK_EXISTS" == '1' ]; then
+    echo 'Nexus-home disk exists already, skipping, so useing existing'
+    gcloud compute disks list --project="$PROJECT_NAME" --filter='name=nexus-home'
+    echo ''
+  else
+    echo 'Nexus-home disk (10GB) does not exist to creating it. Normally takes 1min'
+    time gcloud compute disks create nexus-home --project="$PROJECT_NAME" \
+      --size "20GB" \
+      --zone "$GCP_ZONE" \
+      --image-family=cos-stable \
+      --image-project=cos-cloud \
+      --labels env=build,app=nexus
+    gcloud compute disks list --project="$PROJECT_NAME"
+    echo ''
+  fi
+
+  # Kubectl commands
+
+  # Deploy the deployment and service
+  kubectl apply -f nexus/nexus-deployment.yaml
+  kubectl apply -f nexus/nexus-service.yaml
+  kubectl get pods --namespace build
+  kubectl get svc --namespace build
+
+  echo ''
+  echo 'Describing Nexus deployment'
+  NEXUS_POD_ID=$( kubectl get pods --namespace build | grep nexus | awk '{print $1}' )
+
+  set +x
+
+  echo ''
+  echo '--------------------------------------------------------------------'
+  echo 'Nexus deployment completed'
+  echo ''
+  echo 'Please wait a few minutes then.'
+  echo 'You will get an SSL warning as the default nexus certificate is self-signed.'
+  echo "Username: admin"
+  echo "Password: admin123"
+  echo ''
+  echo '--------------------------------------------------------------------'
+
+}

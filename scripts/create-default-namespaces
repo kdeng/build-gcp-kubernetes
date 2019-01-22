@@ -1,0 +1,20 @@
+#!/bin/bash
+
+function create-default-namespaces () {
+
+  echo 'Now creating default namespaces'
+
+  NS_EXISTS=$( kubectl get ns | grep -ci build || true )
+
+  if [ "$NS_EXISTS" == '1' ]; then
+    echo 'Namespace build exists already, skipping, so using existing'
+    echo ''
+  else
+    # Needed to be created
+    kubectl create ns build
+  fi
+
+  echo ' Showing namespaces'
+  kubectl get namespaces
+
+}

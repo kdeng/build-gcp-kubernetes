@@ -1,0 +1,55 @@
+#!/bin/bash
+
+function create-k8s-cluster () {
+
+  echo ''
+  echo '-----------------------------------'
+  echo "Creating Kubernetes cluster"
+  echo '-----------------------------------'
+  echo ''
+  echo "  Master node zone:  $GCP_ZONE"
+  echo "  Project name:      $PROJECT_NAME"
+  echo "  Cluster name:      $K8S_CLUSTERNAME"
+  echo "  Cluster size:      $K8S_NODE_COUNT Servers / VM's in each Zone"
+  echo "  Cluster version:   $K8S_VERSION"
+  echo "  Region:            $GCP_ZONE,$OTHER_GCP_ZONE"
+  echo ''
+
+  CLUSTER_EXISTS=$( gcloud beta container clusters list --project="$PROJECT_NAME" | grep -ci "$K8S_CLUSTERNAME" || true )
+
+  if [ "$CLUSTER_EXISTS" == '1' ]; then
+    echo 'Cluster $K8S_CLUSTERNAME exists already, skipping, so using existing'
+    echo ''
+  else
+    time gcloud beta container --project "$PROJECT_NAME"\
+      clusters create "$K8S_CLUSTERNAME" \
+      --region="$GCP_ZONE" \
+      --username="admin" \
+      --cluster-version "$K8S_VERSION" \
+      --machine-type "$MACHINE_SIZE" \
+      --image-type "COS" \
+      --disk-size "$MACHINE_ROOT_DISK_SIZE_GB" \
+      --scopes "https://www.googleapis.com/auth/compute","https://www.googleapis.com/auth/devstorage.read_only","https://www.googleapis.com/auth/logging.write","https://www.googleapis.com/auth/monitoring","https://www.googleapis.com/auth/servicecontrol","https://www.googleapis.com/auth/service.management.readonly","https://www.googleapis.com/auth/trace.append" \
+      --num-nodes "$K8S_NODE_COUNT" \
+      --network "default" \
+      --enable-cloud-logging \
+      --enable-cloud-monitoring \
+      --subnetwork "default" \
+      --addons KubernetesDashboard,HttpLoadBalancing,HorizontalPodAutoscaling \
+      --enable-autoupgrade \
+      --enable-autorepair \
+      --maintenance-window "14:00" \
+      --labels app=build-apps
+
+      # addons : Istio, NetworkPolicy.
+
+      # enable preemptible VM
+      #--min-nodes "1" \
+      #--max-nodes "1" \
+      #--preemptible
+
+      # disabled this feature
+      #--disable-addons HttpLoadBalancing
+  fi
+
+}

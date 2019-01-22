@@ -1,0 +1,47 @@
+#!/bin/bash
+
+
+function install-load-balancing () {
+
+  # Temp debugging
+  # set -x
+
+  echo 'Info: It takes several minutes for creating ingress service'
+
+  echo ''
+
+  # JENKINS_POD_ID=$( kubectl get pods --namespace build | grep jenkins | awk '{print $1}' )
+  # NEXUS_POD_ID=$( kubectl get pods --namespace build | grep nexus | awk '{print $1}' )
+
+  # mkdir -pv tmp || true
+  # openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tmp/tls.key -out tmp/tls.crt -subj "/CN=osnz-build/O=OSNZ/L=Auckland/OU=DE"
+
+  # kubectl create secret generic tls --from-file=tmp/tls.crt --from-file=tmp/tls.key --namespace build
+
+  kubectl apply -f lb/ingress.yaml --namespace build
+
+  echo 'Checking for Jenkins IP Address'
+  BUILD_IP_ADDRESS=''
+  BUILD_IP_ADDRESS=$( kubectl describe ingress build-ingress --namespace build | grep 'Address:' | awk '{print $2}' )
+  while [ ! -n "$BUILD_IP_ADDRESS" ]
+  do
+    BUILD_IP_ADDRESS=$( kubectl describe ingress build-ingress --namespace build | grep 'Address:' | awk '{print $2}' )
+    echo 'No IP for build cluster yet, retrying in 30 seconds'
+    sleep 30
+  done
+
+  echo 'Build cluster IP found:'
+  # Need a while loop here as it takes a few minutes to create the jenkins instance
+  kubectl describe ingress build-ingress --namespace build
+
+  echo ''
+  echo '--------------------------------------------------------------------'
+  echo ''
+  echo 'Please wait a few minutes then.'
+  echo "Go to https://$BUILD_IP_ADDRESS/nexus for access nexus service"
+  echo "Go to https://$BUILD_IP_ADDRESS/jenkins for access jenkins service"
+  echo 'You will get an SSL warning as the default jenkins certificate is self-signed.'
+  echo ''
+  echo '--------------------------------------------------------------------'
+
+}

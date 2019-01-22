@@ -1,0 +1,17 @@
+#!/bin/bash
+
+function get-k8s-creds () {
+
+    # Variables
+    # - K8S_CLUSTERNAME
+    # - GCP_ZONE
+    echo "Getting credentials for $K8S_CLUSTERNAME with the master in zone $GCP_ZONE"
+    gcloud container clusters get-credentials "$K8S_CLUSTERNAME"  --zone "$GCP_ZONE" --project "$PROJECT_NAME"
+
+    echo ''
+    echo 'Cluster Info and versions:'
+    echo ''
+    kubectl cluster-info
+    kubectl get nodes -o wide
+
+}

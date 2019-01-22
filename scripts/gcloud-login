@@ -1,0 +1,15 @@
+#!/bin/bash
+
+function gcloud-login () {
+
+  # simple, script will exit if command not found.
+  GCLOUD_LOGIN=$( gcloud auth list | grep -ci '*' || true )
+  if [ "$GCLOUD_LOGIN" == '1' ]; then
+    echo 'gcloud already login'
+    echo ''
+  else
+    # Create the image if it does not exist
+    gcloud auth activate-service-account --key-file="$GCP_ACCOUNT_KEY"
+  fi
+
+}

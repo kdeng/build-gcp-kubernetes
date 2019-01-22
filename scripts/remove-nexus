@@ -1,0 +1,16 @@
+#!/bin/bash
+
+function remove-nexus () {
+
+  echo "Now removing nexus, deployment, pod, service"
+  kubectl --namespace=build get deployments
+  kubectl --namespace=build delete deployment nexus || true
+
+  kubectl --namespace=build get services
+  kubectl --namespace=build delete services nexus-ui || true
+
+  echo 'You should not see any nexus pods'
+  kubectl --namespace=build get pods || true
+  kubectl --namespace=build get all | grep nexus || true
+
+}

@@ -1,0 +1,20 @@
+#!/bin/bash
+
+function remove-jenkins () {
+
+  echo "Now removing jenkins, deployment, pod, secrets, images"
+  kubectl --namespace=build get secret
+  kubectl --namespace=build delete secret jenkins || true
+
+  kubectl --namespace=build get deployments
+  kubectl --namespace=build delete deployment jenkins || true
+
+  kubectl --namespace=build get services
+  kubectl --namespace=build delete services jenkins-discovery || true
+  kubectl --namespace=build delete services jenkins-ui || true
+
+  echo 'You should not see any jenkins pods'
+  kubectl --namespace=build get pods || true
+  kubectl --namespace=build get all | grep jenkins || true
+
+}
